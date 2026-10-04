@@ -104,6 +104,121 @@ npm run dev
 
 Admin dashboard: http://localhost:5173/admin. To show your admin login: `Get-Content api\.env | Select-String '^ADMIN_'`.
 
+## Run everything with Docker Compose
+
+`docker-compose.yml` starts the whole stack. It includes `docker-compose.dev.yml` for PostgreSQL, so the same database container and data volume are reused.
+
+```powershell
+# Needs: Docker Desktop, the three env files (.env, api/.env, ai-service/.env) and Ollama running on the host
+docker compose up -d          # builds the images and starts everything
+docker compose ps             # amber-pea-ai and amber-pea-frontend show "(healthy)"
+docker compose logs -f api    # follow one service
+docker compose down           # stop everything (database and Chroma volumes are kept)
+```
+
+| Service | Container | URL |
+|---|---|---|
+| Frontend | `amber-pea-frontend` | http://localhost:3000 (admin at `/admin`) |
+| API | `amber-pea-api` | http://localhost:8080 |
+| AI service | `amber-pea-ai` | http://localhost:8000 |
+| Knowledge-base ingest | `amber-pea-ai-ingest` | One-shot job; runs before the AI service on every `up`, then exits with code 0 |
+| PostgreSQL | `amber-pea-postgres` | `localhost:5432` (from `docker-compose.dev.yml`) |
+
+How it's wired:
+
+- **Settings:** the existing env files are reused.
+  - The API reads `api/.env`, but its DB connection points at the `postgres` container using `POSTGRES_*` from the root `.env`.
+  - The AI service reads `ai-service/.env`, with Ollama reached at `host.docker.internal:11434`.
+  - CORS is set to the frontend URL.
+- **Startup order:**
+  1. PostgreSQL becomes healthy.
+  2. The API and the ingest job start.
+  3. When the ingest finishes successfully, the AI service starts.
+- **Rebuilds:** images are always built from local source (`pull_policy: build`), so `up` picks up code changes. Builds are cached, so this is quick when nothing changed.
+- **Port clashes:** the default ports (3000, 8080, 8000) are the same as the manual dev setup, so stop those dev servers first. You can also set `FRONTEND_PORT`, `API_PORT` and `AI_PORT` in the root `.env`. The frontend URLs are built into the bundle, so the next `up` rebuilds it with the new ports.
+- **If Ollama isn't running,** the ingest job fails and the AI service won't start. The rest of the site still works, and the chat widget shows its fallback message.
+- **To start only the database,** as in the manual setup: `docker compose -f docker-compose.dev.yml up -d`.
+
+## Docker images
+
+Each service has a multi-stage `Dockerfile` with exact base image versions and runs as a non-root user. Build all three from the **repo root**. Each Dockerfile has its own `Dockerfile.dockerignore` allowlist, so `.env` files, `node_modules`, `.venv` and build output never enter the build context.
+
+| Image | Dockerfile | Base images | Port | Notes |
+|---|---|---|---|---|
+| API | `api/Dockerfile` | `eclipse-temurin:17.0.20_8-jdk-noble` → `17.0.20_8-jre-noble` | 8080 | Built with the Maven Wrapper; Spring Boot layers are extracted for fast rebuilds |
+| AI service | `ai-service/Dockerfile` | `python:3.13.16-slim-trixie` | 8000 | Includes `knowledge-base/`, so the same image can run the ingest; Chroma data in volume `/app/ai-service/data` |
+| Frontend | `frontend/Dockerfile` | `node:24.21.0-alpine3.24` → `nginxinc/nginx-unprivileged:1.31.6-alpine3.24` | 8080 | `VITE_*` URLs are **build args**; nginx serves client routes (SPA fallback), long-term caching for `/assets`, `/healthz` |
+
+```powershell
+docker build -f api/Dockerfile -t amberpea-api .
+docker build -f ai-service/Dockerfile -t amberpea-ai .
+docker build -f frontend/Dockerfile -t amberpea-frontend `
+  --build-arg VITE_API_BASE_URL=http://localhost:18080 `
+  --build-arg VITE_AI_BASE_URL=http://localhost:18000 `
+  --build-arg VITE_SITE_URL=http://localhost:13000 .
+```
+
+Run against the local PostgreSQL and Ollama on the host (ports chosen so they don't clash with the dev servers):
+
+```powershell
+# API: secrets from api/.env, DB host switched to the Docker host
+docker run -d --name amberpea-api -p 18080:8080 --env-file api/.env `
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/amberpea `
+  -e CORS_ALLOWED_ORIGINS=http://localhost:13000 amberpea-api
+
+# AI service: index the knowledge base into a volume, then serve
+$ai = @('-e','CORS_ALLOWED_ORIGINS=http://localhost:13000',
+        '-e','LLM_BASE_URL=http://host.docker.internal:11434',
+        '-e','EMBEDDING_BASE_URL=http://host.docker.internal:11434',
+        '-e','EMBEDDING_QUERY_PREFIX=search_query:',
+        '-e','EMBEDDING_DOCUMENT_PREFIX=search_document:',
+        '-e','MAX_VECTOR_DISTANCE=0.42')
+docker run --rm -v amberpea-chroma:/app/ai-service/data @ai amberpea-ai python /app/knowledge-base/ingest.py
+docker run -d --name amberpea-ai -p 18000:8000 -v amberpea-chroma:/app/ai-service/data @ai amberpea-ai
+
+# Frontend
+docker run -d --name amberpea-frontend -p 13000:8080 amberpea-frontend
+```
+
+Open http://localhost:13000. Notes:
+
+- `docker run --env-file` keeps quotes literally. That's why the AI service gets `-e` flags above instead of `ai-service/.env`, which quotes its embedding prefixes.
+- Health checks:
+  - AI service and frontend include a Docker `HEALTHCHECK`.
+  - The API's JRE image has no curl or wget, so use the HTTP probes instead (`/actuator/health/liveness`, `/actuator/health/readiness`), for example in Kubernetes.
+- The frontend sitemap includes practice-area and attorney pages only if the API is reachable during `docker build`. Otherwise it lists the static routes.
+- Clean up: `docker rm -f amberpea-api amberpea-ai amberpea-frontend` and `docker volume rm amberpea-chroma`.
+
+## CI/CD (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on pushes to `main`, on `v*` tags, on pull requests to `main`, and manually (`workflow_dispatch`).
+
+```mermaid
+flowchart LR
+  A[test-api<br/>mvnw verify + Testcontainers] --> D
+  B[test-ai<br/>pytest] --> D
+  C[test-frontend<br/>Vitest + build] --> D
+  D[docker matrix<br/>api · ai-service · frontend] -->|push to main / v* tag| H[(Docker Hub)]
+```
+
+- **Tests:** the three test jobs run in parallel. The image builds start only when all three pass.
+- **Pull requests:** images are built to prove the Dockerfiles work, but never pushed and never logged in to Docker Hub.
+- **Pushes to `main` and `v*` tags:** images go to `docker.io/<DOCKER_USERNAME>/amberpea-api`, `amberpea-ai` and `amberpea-frontend`.
+  - **Tags:** `latest` (main only), `sha-<short>`, and `1.2.3` / `1.2` for `v1.2.3` tags.
+  - **Platform:** `linux/amd64`, with GitHub Actions build caching per image.
+- **Action versions:** every action is pinned to a commit SHA, with the version in a comment. The workflow has read-only repository permissions.
+
+Setup (in the GitHub repository settings):
+
+| Kind | Name | Value |
+|---|---|---|
+| Secret | `DOCKER_USERNAME` | Docker Hub username |
+| Secret | `DOCKER_PASSWORD` | Docker Hub **access token** with Read & Write scope (preferred over the account password) |
+| Variable (optional) | `DOCKERHUB_NAMESPACE` | Push to an organization instead of your user |
+| Variables (optional) | `VITE_API_BASE_URL`, `VITE_AI_BASE_URL`, `VITE_SITE_URL` | URLs built into the frontend image. They default to the Compose ports (`http://localhost:8080`, `:8000`, `:3000`). |
+
+To use the pushed images with Compose, replace `build:` with `image: <user>/amberpea-api:latest` (and so on), or pull and re-tag them as `amberpea-*:local`.
+
 ## Tests
 
 | Suite | Command | What it covers |
@@ -170,7 +285,7 @@ Automated tools can't confirm full WCAG compliance. That still needs manual test
 - **Admin tokens:** short-lived HS256 JWTs stored in `sessionStorage` and sent as a Bearer header, so there are no cookies and no CSRF exposure. Sign-out clears the token on the client; there is no server-side revocation list.
 - **Booking notifications:** a logging stub (it logs no personal data). Implement `NotificationService` to send real email.
 - **Spring Boot 3.5:** open-source support ended on 30 June 2026. 3.5.16 is used as requested; Spring Boot 4.x also runs on Java 17 and is the upgrade path.
-- **Deployment:** no Dockerfiles, Kubernetes or Terraform are included yet. The services are stateless, log to stdout, take all config from env and expose health probes, so they're ready for containers.
+- **Deployment:** Dockerfiles are included (see [Docker images](#docker-images)); Kubernetes and Terraform are not yet. The services are stateless, log to stdout, take all config from env and expose health probes.
 
 ## Stop / reset
 

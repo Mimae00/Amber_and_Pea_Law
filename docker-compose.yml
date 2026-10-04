@@ -1,0 +1,109 @@
+# Full local stack: PostgreSQL + API + AI service (with knowledge-base ingest) + frontend.
+#
+#   docker compose up --build        # build images and start everything
+#   docker compose down              # stop (data volumes are kept)
+#
+# Reuses docker-compose.dev.yml for PostgreSQL, and the existing env files:
+#   .env             -> POSTGRES_* (and optional *_PORT overrides below)
+#   api/.env         -> JWT_SECRET, ADMIN_*, BOOKING_*, ... (DB and CORS are overridden here)
+#   ai-service/.env  -> LLM_*, EMBEDDING_*, retrieval settings (hosts are overridden here)
+# Ollama must be running on the host (http://localhost:11434) with the models pulled.
+
+# Same project name as docker-compose.dev.yml, so the existing PostgreSQL container and its
+# data volume are reused instead of creating a second database.
+name: amber-pea-law-dev
+
+include:
+  - docker-compose.dev.yml
+
+x-host-gateway: &host-gateway
+  # Lets containers reach Ollama on the host (needed on Linux; built in on Docker Desktop).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: amberpea-api:local
+    pull_policy: build  # local images: build, never pull from a registry
+    container_name: amber-pea-api
+    restart: unless-stopped
+    env_file: api/.env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      SERVER_PORT: "8080"
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000}
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # One-shot job: (re)indexes knowledge-base/*.md into the shared Chroma volume, then exits.
+  ai-ingest:
+    <<: *host-gateway
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    image: amberpea-ai:local
+    pull_policy: build  # local images: build, never pull from a registry
+    container_name: amber-pea-ai-ingest
+    env_file: ai-service/.env
+    environment: &ai-env
+      HOST: 0.0.0.0
+      PORT: "8000"
+      CHROMA_MODE: persistent
+      LLM_BASE_URL: http://host.docker.internal:11434
+      EMBEDDING_BASE_URL: http://host.docker.internal:11434
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000}
+    command: ["python", "/app/knowledge-base/ingest.py"]
+    volumes:
+      - amber_pea_chroma:/app/ai-service/data
+    restart: "no"
+
+  ai-service:
+    <<: *host-gateway
+    # Same image as ai-ingest; the build section lets a plain `docker compose up` build it on a
+    # fresh machine instead of trying to pull it (the second build is fully cached).
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    image: amberpea-ai:local
+    pull_policy: build  # local images: build, never pull from a registry
+    container_name: amber-pea-ai
+    restart: unless-stopped
+    env_file: ai-service/.env
+    environment: *ai-env
+    volumes:
+      - amber_pea_chroma:/app/ai-service/data
+    ports:
+      - "127.0.0.1:${AI_PORT:-8000}:8000"
+    depends_on:
+      ai-ingest:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Baked into the bundle at build time: these are the URLs the *browser* calls.
+        VITE_API_BASE_URL: http://localhost:${API_PORT:-8080}
+        VITE_AI_BASE_URL: http://localhost:${AI_PORT:-8000}
+        VITE_SITE_URL: http://localhost:${FRONTEND_PORT:-3000}
+    image: amberpea-frontend:local
+    pull_policy: build  # local images: build, never pull from a registry
+    container_name: amber-pea-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:8080"
+    depends_on:
+      - api
+      - ai-service
+
+volumes:
+  amber_pea_chroma:

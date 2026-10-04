@@ -1,0 +1,8 @@
+# Allowlist: service code, pinned requirements and the knowledge base. Keeps ai-service/.env,
+# the local virtualenv and local Chroma data out of the context.
+*
+!ai-service/requirements.txt
+!ai-service/app/
+!knowledge-base/
+**/__pycache__
+**/*.pyc

@@ -1,0 +1,6 @@
+# Allowlist: only what the API build needs. Keeps api/.env and build output out of the context.
+*
+!api/mvnw
+!api/pom.xml
+!api/.mvn/
+!api/src/
