@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { firm } from '../content/firm';
+import { ChatWidget } from './chat/ChatWidget';
 
 const NAV = [
   { to: '/practice-areas', label: 'Practice Areas' },
@@ -164,6 +165,7 @@ export function Layout() {
         </Suspense>
       </main>
       <Footer />
+      <ChatWidget />
     </>
   );
 }

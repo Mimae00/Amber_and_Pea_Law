@@ -24,10 +24,12 @@
 
 ## Phase 3: AI service, knowledge base, chatbot widget
 
-- [ ] 6. AI service config, LLM and embedding clients, Chroma factory (persistent/http)
-- [ ] 7. Chunking, ingest, hybrid retriever with RRF, guardrails, prompt, SSE chat endpoint, health endpoints, rate limit, CORS
-- [ ] 8. Knowledge base markdown files and `ingest.py` wrapper
-- [ ] 9. Chat widget with streaming, citations, consent-gated lead capture, booking suggestion and fallback
+- [x] 6. AI service config, LLM and embedding clients, Chroma factory (persistent/http)
+  - Added `LLM_PROVIDER=none` (extractive answers) and `EMBEDDING_PROVIDER=default` (Chroma ONNX)
+- [x] 7. Chunking, ingest, hybrid retriever with RRF, guardrails, prompt, SSE chat endpoint, health endpoints, rate limit, CORS
+  - Fallbacks: LLM down -> best passage; embeddings down -> BM25 only
+- [x] 8. Knowledge base markdown files and `ingest.py` wrapper
+- [x] 9. Chat widget with streaming, citations, consent-gated lead capture, booking suggestion and fallback
   - _Requirements: 4.1–4.12, 8.2, 8.3_
 
 ## Phase 4: Booking, lead capture, admin dashboard
