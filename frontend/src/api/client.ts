@@ -1,5 +1,15 @@
 import { config } from '../config';
-import type { Attorney, CreateLeadRequest, PracticeArea, ProblemDetail, Review } from './types';
+import type {
+  Attorney,
+  Availability,
+  BookingConfig,
+  BookingConfirmation,
+  CreateBookingRequest,
+  CreateLeadRequest,
+  PracticeArea,
+  ProblemDetail,
+  Review,
+} from './types';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -15,7 +25,7 @@ export class ApiError extends Error {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
-async function request<T>(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<T> {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let res: Response;
@@ -68,4 +78,15 @@ export const api = {
   reviews: (limit = 50) => cachedGet<Review[]>(`/api/reviews?limit=${limit}`),
   createLead: (body: CreateLeadRequest) =>
     request<{ status: string }>('/api/leads', { method: 'POST', body: JSON.stringify(body) }),
+  // Booking data changes constantly, so it is never cached.
+  bookingConfig: () => request<BookingConfig>('/api/bookings/config'),
+  availability: (date: string, signal?: AbortSignal) =>
+    request<Availability>(`/api/bookings/availability?date=${encodeURIComponent(date)}`, {}, signal),
+  createBooking: (body: CreateBookingRequest) =>
+    request<BookingConfirmation>('/api/bookings', { method: 'POST', body: JSON.stringify(body) }),
 };
+
+/** Clears cached public content, e.g. after an admin edits practice areas or reviews. */
+export function clearPublicCache() {
+  cache.clear();
+}

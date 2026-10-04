@@ -25,7 +25,7 @@ export default function PracticeAreasPage() {
           {(data) => (
             <div className="grid grid--3">
               {data.map((a) => (
-                <PracticeAreaCard key={a.slug} area={a} />
+                <PracticeAreaCard key={a.slug} area={a} headingLevel={2} />
               ))}
             </div>
           )}

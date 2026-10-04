@@ -81,6 +81,11 @@ h3 {
   font-size: 1.25rem;
 }
 
+/* Card titles look the same whether they are h2 (list page) or h3 (home section). */
+.practice-card__title {
+  font-size: 1.25rem;
+}
+
 p {
   margin: 0 0 1em;
 }
@@ -120,6 +125,13 @@ address {
 
 main:focus {
   outline: none;
+}
+
+/* Reserve a full screen for page content so the footer starts below the fold while a
+   lazy-loaded page or its data arrives (prevents a large layout shift / CLS). */
+#main {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .visually-hidden {
@@ -165,9 +177,9 @@ main:focus {
   padding: 3rem 0;
 }
 
+/* Keep the container's side padding; `.section` alone would reset it to 0 */
 .container.section {
-  padding-top: 3rem;
-  padding-bottom: 3rem;
+  padding: 3rem 1.25rem;
 }
 
 .section--tinted {
@@ -190,7 +202,8 @@ main:focus {
 /* Sample banner */
 .sample-banner {
   margin: 0;
-  padding: 0.4rem 1rem;
+  padding: 0.3rem 1rem;
+  line-height: 1.35;
   text-align: center;
   font-size: 0.875rem;
   background: var(--amber-100);
@@ -258,6 +271,13 @@ main:focus {
 
 .primary-nav--open {
   display: block;
+}
+
+.primary-nav ul,
+.site-footer nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .primary-nav ul {
@@ -1176,8 +1196,382 @@ main:focus {
   .chat-panel {
     width: 100%;
   }
-  .chat-launcher span {
-    /* keep the button compact on small screens; the label stays available to screen readers via aria */
-    font-size: 0.95rem;
+  /* Icon-only on phones so it covers less content; the text label stays available to screen readers. */
+  .chat-launcher {
+    width: 3.5rem;
+    height: 3.5rem;
+    padding: 0;
+    justify-content: center;
   }
+  .chat-launcher span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .chat-launcher svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* Room below the footer so the floating chat button never hides the last line. */
+.site-footer {
+  padding-bottom: 5.5rem;
+}
+
+/* Booking */
+.booking-form {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (min-width: 960px) {
+  .booking-form {
+    /* minmax(0, …) stops the date list's content width from squeezing the details column */
+    grid-template-columns: minmax(0, 1.4fr) minmax(20rem, 1fr);
+    align-items: start;
+  }
+}
+
+.booking-form__picker,
+.booking-form__details {
+  margin: 0;
+  min-width: 0;
+}
+
+.booking-form__details legend {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy);
+  padding: 0;
+  float: left;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.booking-form__details legend + * {
+  clear: both;
+}
+
+.slot-picker__group {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.75rem;
+  min-width: 0;
+}
+
+.slot-picker__group legend {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 0.75rem;
+  padding: 0;
+}
+
+.slot-picker__group:disabled {
+  opacity: 0.75;
+}
+
+/* Wrapping grid so every bookable date is visible without horizontal scrolling */
+.date-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
+  gap: 0.5rem;
+  padding: 0.2rem;
+}
+
+.date-option,
+.time-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.date-option__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 4.75rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--navy);
+  line-height: 1.2;
+}
+
+.date-option__weekday,
+.date-option__month {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.date-option__day {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.time-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.time-option__box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.date-option:hover .date-option__box,
+.time-option:hover .time-option__box {
+  border-color: var(--amber-700);
+}
+
+.date-option input:checked + .date-option__box,
+.time-option input:checked + .time-option__box {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+}
+
+.date-option input:checked + .date-option__box span {
+  color: var(--white);
+}
+
+.date-option input:focus-visible + .date-option__box,
+.time-option input:focus-visible + .time-option__box {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.selected-slot {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: var(--amber-50);
+  border: 1px solid var(--amber-300);
+}
+
+.confirmation {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.confirmation:focus {
+  outline: 3px solid var(--focus);
+}
+
+.confirmation__when {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.confirmation__details div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.confirmation__details dt {
+  font-weight: 600;
+}
+
+.confirmation__details dd {
+  margin: 0;
+}
+
+/* Admin */
+.admin {
+  min-height: 100vh;
+  background: #f7f6f3;
+}
+
+.admin-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.admin-nav a {
+  display: inline-block;
+  padding: 0.5rem 0.25rem;
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-nav a[aria-current='page'] {
+  color: var(--amber-800);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.admin-header__user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.admin-main {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+.admin-main:focus {
+  outline: none;
+}
+
+.admin-main h1 {
+  font-size: 1.85rem;
+}
+
+.admin-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-title-row h1 {
+  margin: 0;
+}
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-filters .field {
+  min-width: 11rem;
+}
+
+.admin-editor {
+  margin-bottom: 1.5rem;
+}
+
+.admin-editor h2:focus {
+  outline: none;
+}
+
+.admin-editor__checkbox {
+  align-self: end;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table thead th {
+  background: var(--amber-50);
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.admin-table tbody th {
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.admin-table__message {
+  max-width: 22rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-table select {
+  min-height: 2.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #8a8580;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.admin-table tr.is-cancelled td,
+.admin-table tr.is-cancelled th {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.admin-table tr.is-cancelled td:last-child {
+  text-decoration: none;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.alert--success {
+  background: #f0fdf4;
+  border: 1px solid var(--green-700);
+  color: #14532d;
+}
+
+.admin-login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: var(--amber-50);
+}
+
+.admin-login__form {
+  width: 100%;
+  max-width: 24rem;
 }

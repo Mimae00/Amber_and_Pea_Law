@@ -3,6 +3,10 @@ package com.amberpea.law.booking;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +21,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
               and b.startAt < :to and b.endAt > :from
             """)
     List<Booking> findActiveOverlapping(@Param("from") Instant from, @Param("to") Instant to);
+
+    @Override
+    @EntityGraph(attributePaths = {"lead", "lead.practiceArea"})
+    Page<Booking> findAll(Specification<Booking> spec, Pageable pageable);
 }

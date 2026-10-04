@@ -172,7 +172,7 @@ export default function ChatPanel({ open, onClose }: ChatPanelProps) {
       hidden={!open}
       onKeyDown={onPanelKeyDown}
     >
-      <header className="chat-panel__header">
+      <div className="chat-panel__header">
         <div>
           <h2 id={`${uid}-title`} className="chat-panel__title">
             Ask {firm.name}
@@ -185,7 +185,7 @@ export default function ChatPanel({ open, onClose }: ChatPanelProps) {
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-      </header>
+      </div>
 
       <div className="chat-panel__log" ref={logRef} role="log" aria-live="polite" aria-busy={busy} aria-relevant="additions text">
         {messages.map((m) => (

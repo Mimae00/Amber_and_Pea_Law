@@ -1,0 +1,16 @@
+package com.amberpea.law.config;
+
+import java.time.Clock;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/** A Clock bean so time-based rules (booking notice and window) can be tested with a fixed clock. */
+@Configuration
+public class ClockConfig {
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
+    }
+}

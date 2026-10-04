@@ -27,6 +27,8 @@ function Header() {
 
   return (
     <header className="site-header">
+      {/* Inside <header> so it sits in a landmark (axe "region" rule). */}
+      <p className="sample-banner">Sample site: {firm.name} is fictional. Not legal advice.</p>
       <div className="container site-header__inner">
         <Link to="/" className="brand" aria-label={`${firm.name} home`}>
           <span className="brand__mark" aria-hidden="true">
@@ -149,9 +151,6 @@ export function Layout() {
       <a href="#main" className="skip-link">
         Skip to main content
       </a>
-      <p className="sample-banner">
-        Sample site: {firm.name} is fictional. Nothing here is legal advice.
-      </p>
       <Header />
       <main id="main" ref={mainRef} tabIndex={-1}>
         <Suspense

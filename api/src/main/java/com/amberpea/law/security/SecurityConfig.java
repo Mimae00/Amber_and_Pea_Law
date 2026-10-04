@@ -71,7 +71,7 @@ public class SecurityConfig {
                                 "/api/practice-areas", "/api/practice-areas/*",
                                 "/api/attorneys", "/api/attorneys/*",
                                 "/api/reviews",
-                                "/api/bookings/availability").permitAll()
+                                "/api/bookings/config", "/api/bookings/availability").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/leads", "/api/bookings", "/api/auth/login").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").hasRole("ADMIN")

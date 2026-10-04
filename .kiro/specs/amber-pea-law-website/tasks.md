@@ -34,17 +34,17 @@
 
 ## Phase 4: Booking, lead capture, admin dashboard
 
-- [ ] 10. API: availability and booking endpoints (409 on conflict), notification stub (lead endpoint done in 5.1)
-- [ ] 11. API: admin endpoints for leads, bookings, reviews, practice areas
-- [ ] 12. Frontend: consultation and contact forms wired to API, booking page with slot picker and confirmation
-- [ ] 13. Frontend: admin login, leads/bookings tables with filters and status updates, review and practice-area editors
+- [x] 10. API: booking config, availability and booking endpoints (409 on conflict), notification stub after commit (lead endpoint done in 5.1)
+- [x] 11. API: admin endpoints for leads, bookings, reviews, practice areas
+- [x] 12. Frontend: booking page with date/time radio groups, conflict handling and confirmation (forms wired in Phase 2)
+- [x] 13. Frontend: admin login, leads/bookings tables with filters and status updates, review and practice-area editors
   - _Requirements: 5.1–5.5, 6.1–6.3, 7.3–7.5, 8.1, 8.2_
 
 ## Phase 5: Tests, accessibility and performance, README
 
-- [ ] 14. JUnit unit tests and Testcontainers integration tests
-- [ ] 15. pytest suite for AI service
-- [ ] 16. Vitest component tests
-- [ ] 17. Accessibility and performance pass (focus, contrast, labels, lazy loading, bundle splitting)
-- [ ] 18. README with full local setup
+- [x] 14. JUnit unit tests (12) and Testcontainers integration tests (31); `mvnw test` / `mvnw verify`
+- [x] 15. pytest suite for AI service (58)
+- [x] 16. Vitest component tests (17): StarRating, LeadForm, ChatWidget, SlotPicker
+- [x] 17. Accessibility and performance pass: axe-core 0 violations (public + admin), Lighthouse mobile 97–99 perf / 100 a11y / 100 best practices / 100 SEO; fixed landmark, heading order, CLS and mobile chat button
+- [x] 18. README with full local setup, tests, configuration and known limits
   - _Requirements: 8.4–8.8_
