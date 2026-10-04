@@ -1,0 +1,27 @@
+# Development only: runs PostgreSQL 16 for local work.
+# Credentials come from the root .env file (copy .env.example to .env).
+name: amber-pea-law-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: amber-pea-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is not set in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is not set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}
+    ports:
+      # Bound to localhost only. Override POSTGRES_PORT in .env if 5432 is already in use.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - amber_pea_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  amber_pea_pgdata:

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1b2a41" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Static fallbacks for crawlers without JS; removed at startup so each page's <Seo> tags are the only ones. -->
+    <title data-static-seo>Amber &amp; Pea Law | Personal Injury &amp; Family Law (Sample Site)</title>
+    <meta
+      data-static-seo
+      name="description"
+      content="Amber & Pea Law is a fictional personal injury and family law firm. Sample portfolio site with free consultations, attorney profiles and an AI assistant."
+    />
+    <!-- Sample content: Amber & Pea Law is a fictional firm. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LegalService",
+        "name": "Amber & Pea Law (sample firm)",
+        "description": "Fictional personal injury and family law firm used as sample content for a portfolio project.",
+        "url": "%VITE_SITE_URL%",
+        "telephone": "+1-555-010-0142",
+        "priceRange": "Free initial consultation",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "100 Example Avenue, Suite 400",
+          "addressLocality": "Springfield",
+          "addressRegion": "EX",
+          "postalCode": "00000",
+          "addressCountry": "US"
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            "opens": "09:00",
+            "closes": "17:00"
+          }
+        ],
+        "areaServed": "Sample State of Example",
+        "knowsAbout": ["Personal injury", "Car accidents", "Premises liability", "Workplace injuries", "Divorce", "Child custody", "Child support"]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>This site needs JavaScript. You can call us at (555) 010-0142.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
