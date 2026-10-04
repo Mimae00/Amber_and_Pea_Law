@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
@@ -45,10 +47,11 @@ public class BookingService {
     private final PracticeAreaRepository practiceAreas;
     private final ApplicationEventPublisher events;
     private final NotificationService notifications;
+    private final JdbcTemplate jdbc;
 
     public BookingService(SlotCalculator slots, BookingProperties props, BookingRepository bookings,
             LeadRepository leads, PracticeAreaRepository practiceAreas, ApplicationEventPublisher events,
-            NotificationService notifications) {
+            NotificationService notifications, JdbcTemplate jdbc) {
         this.slots = slots;
         this.props = props;
         this.bookings = bookings;
@@ -56,6 +59,7 @@ public class BookingService {
         this.practiceAreas = practiceAreas;
         this.events = events;
         this.notifications = notifications;
+        this.jdbc = jdbc;
     }
 
     public BookingConfig config() {
@@ -96,6 +100,10 @@ public class BookingService {
             log.info("Discarded booking submission: honeypot filled");
             return new BookingConfirmation("APL-PENDING", start, end, props.timezone());
         }
+        // Serialize concurrent requests for the same slot. Without this, several transactions inserting
+        // into the same range can deadlock inside the exclusion-constraint check (SQLState 40P01).
+        // The lock is released at commit/rollback; the next waiter then sees the committed booking below.
+        lockSlot(start);
         if (!bookings.findActiveOverlapping(start, end).isEmpty()) {
             throw new ConflictException(SLOT_TAKEN);
         }
@@ -115,6 +123,10 @@ public class BookingService {
                 throw new ConflictException(SLOT_TAKEN);
             }
             throw e;
+        } catch (PessimisticLockingFailureException e) {
+            // Safety net (e.g. racing an admin re-activating an overlapping booking): report a conflict, not a 500.
+            log.warn("Lock conflict while booking startAt={}: {}", start, e.getMostSpecificCause().getMessage());
+            throw new ConflictException(SLOT_TAKEN);
         }
         log.info("Created booking id={} startAt={}", booking.getId(), start);
         events.publishEvent(new BookingCreated(new BookingNotification(booking.getId(), start, end, props.timezone(),
@@ -133,6 +145,15 @@ public class BookingService {
     }
 
     record BookingCreated(BookingNotification notification) {
+    }
+
+    /** Arbitrary namespace for this app's advisory locks (first key of the two-int form). */
+    static final int SLOT_LOCK_NAMESPACE = 0x41504C; // "APL"
+
+    /** Transaction-scoped PostgreSQL advisory lock keyed by slot start (minutes since epoch). */
+    private void lockSlot(Instant start) {
+        int minute = Math.toIntExact(start.getEpochSecond() / 60);
+        jdbc.query("select pg_advisory_xact_lock(?, ?)", rs -> null, SLOT_LOCK_NAMESPACE, minute);
     }
 
     static boolean isOverlap(Throwable e) {

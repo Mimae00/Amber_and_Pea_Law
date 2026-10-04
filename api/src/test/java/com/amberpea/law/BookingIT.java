@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -113,16 +114,20 @@ class BookingIT {
         assertThat(jdbc.queryForObject("select count(*) from lead where email = 'second@example.com'", Integer.class)).isZero();
     }
 
-    @Test
+    /**
+     * Regression test: concurrent inserts used to deadlock inside the exclusion-constraint check
+     * (SQLState 40P01) and surface as HTTP 500. Repeated to make the race likely to occur.
+     */
+    @RepeatedTest(5)
     void concurrentRequestsForOneSlotProduceExactlyOneBooking() throws Exception {
         String slot = availableSlots(nextFreeBusinessDay()).get(4);
-        int n = 8;
+        int n = 16;
         ExecutorService pool = Executors.newFixedThreadPool(n);
         CountDownLatch start = new CountDownLatch(1);
         try {
             List<Future<Integer>> results = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                String email = "racer" + i + "@example.com";
+                String email = "racer" + i + "-" + Instant.parse(slot).getEpochSecond() + "@example.com";
                 Callable<Integer> call = () -> {
                     start.await();
                     return mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
